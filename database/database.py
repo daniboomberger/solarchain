@@ -29,3 +29,9 @@ class database():
             cursor.close()
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
+
+    def fillDatabaseConsumptionLowTime(self, consumption, household, date, time):
+        pass
+    
+    def fillDatabaseConsumptionHighTime(self, consumption, households, date, time):
+        pass
