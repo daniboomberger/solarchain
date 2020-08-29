@@ -9,9 +9,12 @@ class calculation():
     def __init__(self):
         self.database = database()
         self.first_run_consumption_counter = 0
-        self.current_state_consumption = 0
-        self.current_solar_consumption
+        self.current_state_production = 0
+        self.current_solar_production = 0
         self.last_consumption = []
+        self.solar_power_provided_to_state = 0
+        self.state_consumption = 0
+        self.solar_consumption = 0
 
     def sortData(self, household_consumption, households, date, time):
         #time period for ht & nt
@@ -24,17 +27,19 @@ class calculation():
         #produced power
         state_production = household_consumption['Bidirektional']
 
-        if self.first_run_consumption_counter == 0: 
+        #calling function to calculate solar & state power consumption
+        self.sortConsumptionType(solar_production, state_production, self.last_consumption['Produktionsmessung'], self.last_consumption['Bidirektional'], household_consumption)
+
+
+        if self.first_run_consumption_counter == 0:
+            #prevents error on first run of application sets consumption to zero
             self.sortDataFirstCalculation(household_consumption, households, date, time)
             self.first_run_consumption_counter = 1
         else:
             for device in households:
-                self.current_consumption = household_consumption[device] - self.last_consumption[device]
-                self.last_consumption = household_consumption[device]
-                if low_time < time > high_time:
-                    self.database.fillDatabaseConsumptionHighTime(self.current_consumption, device, date, time)
-                else:
-                    self.database.fillDatabaseConsumptionLowTime(self.current_consumption, device, date, time)
+                self.state_consumption = household_consumption[device] - self.current_solar_production
+                self.solar_consumption = self.current_solar_production
+                
 
                 
     
@@ -44,13 +49,20 @@ class calculation():
             self.last_consumption.append(household_consumption[device])
             self.current_consumption = household_consumption[device] - household_consumption[device]
             #fill database with consumption data
-            self.database.fillDatabaseConsumptionLowTime(self.current_consumption, device, date, time)
-    
-    def sortPowerType(self, solar_production, state_production, last_solar_production, last_state_production):
-        current_solar_production = solar_production - last_solar_production
-        current_state_production = state_production - last_state_production
+            self.database.fillDatabaseConsumptionLowTime(self.current_solar_production, self.current_state_production, device, date, time)
 
+    def sortConsumptionType(self, solar_production, state_production, last_solar_production, last_state_production, households):
+        #calculate current 5 minute production of solar, state
+        calculated_solar_consumption = solar_production - last_solar_production
+        calculated_state_consumption = state_production - last_state_production
+
+        if calculated_solar_consumption > calculated_state_consumption:
+            self.solar_power_provided_to_state = calculated_solar_consumption - calculated_state_consumption
+            self.current_solar_production = calculated_solar_consumption / len(households)
+        else:
+            self.current_solar_production = calculated_solar_consumption / len(households)
             
+              
 
         
         
