@@ -4,64 +4,87 @@ from database.database import database
 
 dateHandler = dateHandler()
 
+'''
+    TODO: fill last_solar_energy, apartment_count
+'''
+
 class calculation():
 
     def __init__(self):
-        self.database = database()
-        self.first_run_consumption_counter = 0
-        self.current_state_production = 0
-        self.current_solar_production = 0
-        self.last_consumption = []
-        self.solar_power_provided_to_state = 0
-        self.state_consumption = 0
-        self.solar_consumption = 0
+        #consumption of apartment (five min)
 
-    def sortData(self, household_consumption, households, date, time):
-        #time period for ht & nt
-        low_time = dateHandler.convertStringToTime(string_low_time)
-        high_time = dateHandler.convertStringToTime(string_high_time)
+        #consumtion of solar power
+        self.solar_consumption = ''
 
-        #produced solar power
-        solar_production = household_consumption['Produktionsmessung']
+        #consumption of state power
+        self.state_consumption = ''
 
-        #produced power
-        state_production = household_consumption['Bidirektional']
+        #apartment = device (to know for database) 
+        self.apartment = ''
 
-        #calling function to calculate solar & state power consumption
-        self.sortConsumptionType(solar_production, state_production, self.last_consumption['Produktionsmessung'], self.last_consumption['Bidirektional'], household_consumption)
+        #datetime to save for database
+        self.datetime = ''
 
+        #street name for database
+        self.street = ''
 
-        if self.first_run_consumption_counter == 0:
-            #prevents error on first run of application sets consumption to zero
-            self.sortDataFirstCalculation(household_consumption, households, date, time)
-            self.first_run_consumption_counter = 1
-        else:
-            for device in households:
-                self.state_consumption = household_consumption[device] - self.current_solar_production
-                self.solar_consumption = self.current_solar_production
-                
+        #HT or NT time
+        self.timezone_consumption = 0
 
-                
+        #consumption price calculated with factors (time zone (HT or NT), solar or state)
+        self.counter = 0
+
+        #value to calculate five min consumption (old value)
+        self.last_total_consumption = {}
+
+        #solar energy produced of last five min
+        self.last_total_solar_energy = ''
+
+        #apartment counter
+        self.apartment_count = 0
+
+        #spare solar produced energy 
+        self.spare_solar_production = 0
+
+    '''
+        params: household_consumption => dict {apartments: consumption}
+                devices => list (all apartments)
+                date => datetime (current time of json)
+                time => time (to check wether it's HT or NT)
+                street_name => street name (name of the house)
+    '''    
+    def sortData(self, household_consumption, devices,date, time, street_name):
+        self.datetime = date
+        self.street = street_name
+        self.apartment_count = len(devices) - 1
+
+        #string to time (to check NT and HT)
+        NT_time = dateHandler.convertStringToTime(string_low_time)
+        HT_time = dateHandler.convertStringToTime(string_high_time)
+
+        #check if time is in NT zone {22:00:00 - 06:00:00} or HT Zone {06:00:00 - 22:00:00}
+        if NT_time <= time >= HT_time: 
+            self.timezone_consumption = 0 #HT    
+        else: 
+            self.timezone_consumption = 1 #NT
+        
+        for apartment in devices:
+            self.apartment = apartment
+            if self.counter == 0:
+                self.solar_consumption, self.state_consumption,self.last_total_consumption, self.last_total_solar_energy = 0, 0, household_consumption[apartment], household_consumption['Produktionsmessung']
+            else:
+                self.solar_consumption = self.calculatedSolarConsumptionPerApartment(household_consumption['Produktionsmessung'])
+                self.state_consumption = self.calculateConsumption(household_consumption[apartment] - self.solar_consumption #calculates state consumption (total_consumption - solar_consumption)
+                print(f'{apartment}---> {str(self.solar_consumption)} | {str(self.state_consumption)} | {str(self.datetime)}')
+        self.last_total_consumption = household_consumption
+        self.counter = 1
+        
+
+    def calculateConsumption(self, total_consumption, last_total_consumption):
+        return int(total_consumption) - int(last_total_consumption) #returns five minute consumption value
     
-    def sortDataFirstCalculation(self, household_consumption, households, date, time):
-        #always low time consumption and will be consumption zero to avoid exception
-        for device in households:
-            self.last_consumption.append(household_consumption[device])
-            self.current_consumption = household_consumption[device] - household_consumption[device]
-            #fill database with consumption data
-            self.database.fillDatabaseConsumptionLowTime(self.current_solar_production, self.current_state_production, device, date, time)
-
-    def sortConsumptionType(self, solar_production, state_production, last_solar_production, last_state_production, households):
-        #calculate current 5 minute production of solar, state
-        calculated_solar_consumption = solar_production - last_solar_production
-        calculated_state_consumption = state_production - last_state_production
-
-        if calculated_solar_consumption > calculated_state_consumption:
-            self.solar_power_provided_to_state = calculated_solar_consumption - calculated_state_consumption
-            self.current_solar_production = calculated_solar_consumption / len(households)
-        else:
-            self.current_solar_production = calculated_solar_consumption / len(households)
-            
+    def calculatedSolarConsumptionPerApartment(self, solar_energy):
+        return (int(solar_energy) - int(self.last_total_solar_energy)) / int(self.apartment_count) #returns consumed solar per apartment 
               
 
         
