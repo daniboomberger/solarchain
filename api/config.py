@@ -1,4 +1,3 @@
-
 #API configurations
 #standard URl
 api_url = "http://solarchain.solarlog-web.ch/api?"

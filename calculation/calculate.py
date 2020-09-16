@@ -46,6 +46,9 @@ class calculation():
         #spare solar produced energy 
         self.spare_solar_production = 0
 
+        #this is the magical dictionary for all the information needed in the invoice (apartment {solar_consumption, solar_price, state_consumption, state_price, high_tariff, low_tariff})
+        self.all_informations = {}
+
     '''
         params: household_consumption => dict {apartments: consumption}
                 devices => list (all apartments)
@@ -73,18 +76,25 @@ class calculation():
             if self.counter == 0:
                 self.solar_consumption, self.state_consumption,self.last_total_consumption, self.last_total_solar_energy = 0, 0, household_consumption[apartment], household_consumption['Produktionsmessung']
             else:
-                self.solar_consumption = self.calculatedSolarConsumptionPerApartment(household_consumption['Produktionsmessung'])
-                self.state_consumption = self.calculateConsumption(household_consumption[apartment] - self.solar_consumption #calculates state consumption (total_consumption - solar_consumption)
-                print(f'{apartment}---> {str(self.solar_consumption)} | {str(self.state_consumption)} | {str(self.datetime)}')
+                self.solar_consumption = round(self.calculatedSolarConsumptionPerApartment(household_consumption['Produktionsmessung']), 2)
+                self.state_consumption = round(self.calculateConsumption(household_consumption[apartment], self.last_total_consumption[apartment]) - self.solar_consumption, 2) #calculates state consumption (total_consumption - solar_consumption)
+                #print(f'{date} ------------ {str(apartment)} ---------------- {self.solar_consumption} ------------ {self.state_consumption}')
+                if self.solar_consumption != 0:
+                    print(f'solar -> {self.solar_consumption}')
+                    print(f'state -> {self.state_consumption}')
+                    print(f'total -> {round(self.solar_consumption + self.state_consumption, 2)}')
+        
+        self.last_total_solar_energy = household_consumption['Produktionsmessung']
         self.last_total_consumption = household_consumption
         self.counter = 1
         
 
     def calculateConsumption(self, total_consumption, last_total_consumption):
-        return int(total_consumption) - int(last_total_consumption) #returns five minute consumption value
+        return float(total_consumption) - float(last_total_consumption) #returns five minute consumption value
     
     def calculatedSolarConsumptionPerApartment(self, solar_energy):
-        return (int(solar_energy) - int(self.last_total_solar_energy)) / int(self.apartment_count) #returns consumed solar per apartment 
+        #print(self.last_total_solar_energy)
+        return (float(solar_energy) - float(self.last_total_solar_energy)) / float(self.apartment_count) #returns consumed solar per apartment 
               
 
         
